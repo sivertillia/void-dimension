@@ -1,7 +1,7 @@
 package com.finnk42.void_dimension.item;
 
 import com.finnk42.void_dimension.Config;
-import com.finnk42.void_dimension.init.ModConstants;
+import com.finnk42.void_dimension.world.VoidDimensions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -9,6 +9,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -74,13 +75,16 @@ extends Item {
             ServerLevel currentLevel = player.serverLevel();
             currentLevel.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
             CompoundTag playerData = player.getPersistentData();
-            if (currentLevel.dimension() != ModConstants.VOID_DIMENSION_KEY) {
+            if (!VoidDimensions.isVoid(currentLevel.dimension())) {
                 playerData.putInt("VoidReturnX", player.getBlockX());
                 playerData.putInt("VoidReturnY", player.getBlockY());
                 playerData.putInt("VoidReturnZ", player.getBlockZ());
                 playerData.putString("VoidReturnDim", currentLevel.dimension().location().toString());
-                ServerLevel voidLevel = player.getServer().getLevel(ModConstants.VOID_DIMENSION_KEY);
-                if (voidLevel != null) {
+                // Creating a dimension mutates the server's level map, which is being iterated during
+                // the tick that runs this method — defer it one tick to avoid a ConcurrentModificationException.
+                MinecraftServer server = player.getServer();
+                server.execute(() -> {
+                    ServerLevel voidLevel = VoidDimensions.getOrCreate(server, VoidDimensions.keyForPlayer(player.getUUID()));
                     BlockPos targetPos = new BlockPos(0, 100, 0);
                     BlockPos belowPos = targetPos.below();
                     if (voidLevel.isEmptyBlock(belowPos) || !voidLevel.getFluidState(belowPos).isEmpty()) {
@@ -91,7 +95,7 @@ extends Item {
                     player.hurtMarked = true;
                     DimensionTransition transition = new DimensionTransition(voidLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
                     player.changeDimension(transition);
-                }
+                });
             } else {
                 ServerLevel returnLevel = player.getServer().getLevel(Level.OVERWORLD);
                 if (playerData.contains("VoidReturnDim")) {

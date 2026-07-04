@@ -1,6 +1,6 @@
 package com.finnk42.void_dimension.block;
 
-import com.finnk42.void_dimension.init.ModConstants;
+import com.finnk42.void_dimension.world.VoidDimensions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
@@ -31,7 +31,7 @@ extends Block {
     @Nullable
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Level level = context.getLevel();
-        boolean isVoid = level.dimension() == ModConstants.VOID_DIMENSION_KEY;
+        boolean isVoid = VoidDimensions.isVoid(level.dimension());
         return this.defaultBlockState().setValue(ACTIVE, isVoid);
     }
 

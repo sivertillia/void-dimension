@@ -6,5 +6,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
 public class ModConstants {
+    /** The datapack-defined template dimension whose type and generator every player's void is cloned from. */
     public static final ResourceKey<Level> VOID_DIMENSION_KEY = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("void_dimension", "the_void"));
+
+    private ModConstants() {
+    }
 }
