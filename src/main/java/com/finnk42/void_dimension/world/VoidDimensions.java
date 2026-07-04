@@ -1,8 +1,13 @@
 package com.finnk42.void_dimension.world;
 
 import com.google.common.collect.ImmutableList;
+import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -58,6 +63,35 @@ public final class VoidDimensions {
             return true;
         }
         return Files.isDirectory(server.storageSource.getDimensionPath(levelKey));
+    }
+
+    /**
+     * All per-player voids that currently exist — both loaded levels and dimensions saved to disk from
+     * a previous session. The template {@code the_void} is excluded.
+     */
+    public static Set<ResourceKey<Level>> listExisting(MinecraftServer server) {
+        Set<ResourceKey<Level>> result = new LinkedHashSet<>();
+        for (ServerLevel level : server.getAllLevels()) {
+            ResourceKey<Level> key = level.dimension();
+            if (isVoid(key) && !key.location().getPath().equals("the_void")) {
+                result.add(key);
+            }
+        }
+        Path namespaceDir = server.storageSource.getDimensionPath(keyForPlayer(new UUID(0L, 0L))).getParent();
+        if (namespaceDir != null && Files.isDirectory(namespaceDir)) {
+            try (Stream<Path> children = Files.list(namespaceDir)) {
+                children.filter(Files::isDirectory).forEach(dir -> {
+                    try {
+                        result.add(keyForPlayer(UUID.fromString(dir.getFileName().toString())));
+                    } catch (IllegalArgumentException notAPlayerVoid) {
+                        // folder name isn't a UUID (e.g. the template) — ignore
+                    }
+                });
+            } catch (IOException ignored) {
+                // best effort: fall back to whatever is already loaded
+            }
+        }
+        return result;
     }
 
     /** Returns the player's void level, creating and registering it if it does not exist yet. */

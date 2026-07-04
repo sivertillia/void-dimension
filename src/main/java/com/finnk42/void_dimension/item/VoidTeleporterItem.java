@@ -1,17 +1,24 @@
 package com.finnk42.void_dimension.item;
 
 import com.finnk42.void_dimension.Config;
+import com.finnk42.void_dimension.world.VoidAccess;
 import com.finnk42.void_dimension.world.VoidDimensions;
+import com.mojang.authlib.GameProfile;
+import java.util.Optional;
+import java.util.UUID;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
@@ -72,17 +79,21 @@ extends Item {
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity entityLiving) {
         if (!level.isClientSide() && entityLiving instanceof ServerPlayer player) {
             ServerLevel currentLevel = player.serverLevel();
-            currentLevel.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
+            MinecraftServer server = player.getServer();
             CompoundTag playerData = player.getPersistentData();
             if (!VoidDimensions.isVoid(currentLevel.dimension())) {
-                // Creating a dimension mutates the server's level map, which is being iterated during
-                // the tick that runs this method — defer it one tick to avoid a ConcurrentModificationException.
-                MinecraftServer server = player.getServer();
-                server.execute(() -> {
-                    ServerLevel voidLevel = VoidDimensions.getOrCreate(server, VoidDimensions.keyForPlayer(player.getUUID()));
-                    VoidDimensions.sendToVoid(player, voidLevel);
-                });
+                // A teleporter renamed to a player's nick targets that player's void (access-checked);
+                // an unnamed one targets your own. Returns null if the trip is not allowed (a message
+                // was already sent to the player).
+                ResourceKey<Level> destination = resolveDestination(player, server, stack);
+                if (destination != null) {
+                    currentLevel.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
+                    // Creating a dimension mutates the server's level map, which is being iterated during
+                    // the tick that runs this method — defer it one tick to avoid a ConcurrentModificationException.
+                    server.execute(() -> VoidDimensions.sendToVoid(player, VoidDimensions.getOrCreate(server, destination)));
+                }
             } else {
+                currentLevel.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
                 ServerLevel returnLevel = player.getServer().getLevel(Level.OVERWORLD);
                 if (playerData.contains("VoidReturnDim")) {
                     ResourceLocation dimLoc = ResourceLocation.parse(playerData.getString("VoidReturnDim"));
@@ -103,5 +114,37 @@ extends Item {
             }
         }
         return stack;
+    }
+
+    /**
+     * Works out which void the teleporter should send the player to. An unnamed teleporter sends the
+     * player to their own void; a teleporter renamed (e.g. in an anvil) to a player's nick sends them
+     * to that player's void, but only if it exists and the player is allowed in (owner, granted via
+     * {@code /void access}, or an operator). Returns null and notifies the player when the trip is
+     * refused.
+     */
+    private static ResourceKey<Level> resolveDestination(ServerPlayer player, MinecraftServer server, ItemStack stack) {
+        Component customName = stack.get(DataComponents.CUSTOM_NAME);
+        if (customName == null) {
+            return VoidDimensions.keyForPlayer(player.getUUID());
+        }
+        String targetName = customName.getString().trim();
+        GameProfileCache cache = server.getProfileCache();
+        Optional<GameProfile> profile = cache == null ? Optional.empty() : cache.get(targetName);
+        if (profile.isEmpty()) {
+            player.displayClientMessage(Component.literal("No player named \"" + targetName + "\"."), true);
+            return null;
+        }
+        UUID ownerId = profile.get().getId();
+        ResourceKey<Level> key = VoidDimensions.keyForPlayer(ownerId);
+        if (!VoidDimensions.exists(server, key)) {
+            player.displayClientMessage(Component.literal(targetName + " has no void dimension yet."), true);
+            return null;
+        }
+        if (!player.hasPermissions(2) && !VoidAccess.get(server).hasAccess(ownerId, player.getUUID())) {
+            player.displayClientMessage(Component.literal(targetName + " has not allowed you into their void."), true);
+            return null;
+        }
+        return key;
     }
 }
