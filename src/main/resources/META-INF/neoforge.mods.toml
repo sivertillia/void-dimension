@@ -1,0 +1,32 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="MIT"
+#issueTrackerURL=""
+
+[[mods]]
+modId="void_dimension"
+version="1.0.0"
+displayName="The Void Dimension"
+#updateJSONURL=""
+#displayURL=""
+logoFile="logo.png"
+authors="FinnK42"
+description='''
+Adds a new, dark, and empty void dimension to the game. 
+Construct the teleporter item, build in the emptiness, and use it to your own advantage.
+'''
+
+[[dependencies.void_dimension]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1.220,)"
+    ordering="NONE"
+    side="BOTH"
+
+# Here's another dependency
+[[dependencies.void_dimension]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.1]"
+    ordering="NONE"
+    side="BOTH"

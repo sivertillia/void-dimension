@@ -1,0 +1,31 @@
+{
+  "display": {
+    "icon": {
+      "id": "void_dimension:void_teleporter"
+    },
+    "title": "The Void Awaits",
+    "description": "Acquire a Void Teleporter to begin your journey.",
+    "background": "minecraft:textures/block/black_concrete.png",
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_teleporter": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "void_dimension:void_teleporter"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_teleporter"
+    ]
+  ]
+}

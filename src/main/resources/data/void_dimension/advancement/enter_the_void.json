@@ -1,0 +1,26 @@
+{
+  "parent": "void_dimension:root",
+  "display": {
+    "icon": {
+      "id": "minecraft:bedrock"
+    },
+    "title": "Into the Abyss",
+    "description": "Step foot into the Void Dimension for the first time.",
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "entered_void": {
+      "trigger": "minecraft:changed_dimension",
+      "conditions": {
+        "to": "void_dimension:the_void"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "entered_void"
+    ]
+  ]
+}

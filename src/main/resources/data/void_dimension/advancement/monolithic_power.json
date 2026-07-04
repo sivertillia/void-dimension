@@ -1,0 +1,26 @@
+{
+  "parent": "void_dimension:enter_the_void",
+  "display": {
+    "icon": {
+      "id": "void_dimension:void_monolith"
+    },
+    "title": "Ancient Resonance",
+    "description": "Place a Void Monolith to anchor your presence in the abyss.",
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true
+  },
+  "criteria": {
+    "placed_monolith": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "block": "void_dimension:void_monolith"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "placed_monolith"
+    ]
+  ]
+}

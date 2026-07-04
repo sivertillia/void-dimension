@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "void_dimension:block/void_monolith_inactive"
+  }
+}

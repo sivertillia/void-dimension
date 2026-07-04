@@ -1,0 +1,16 @@
+{
+  "dimension.void_dimension.the_void": "The Void",
+  
+  "block.void_dimension.void_monolith": "Void Monolith",
+  
+  "item.void_dimension.void_teleporter": "Void Teleporter",
+
+  "advancements.void_dimension.root.title": "The Void Awaits",
+  "advancements.void_dimension.root.description": "Acquire a Void Teleporter to begin your journey.",
+  
+  "advancements.void_dimension.enter_the_void.title": "Into the Abyss",
+  "advancements.void_dimension.enter_the_void.description": "Step foot into the Void Dimension for the first time.",
+
+  "advancements.void_dimension.monolithic_power.title": "Ancient Resonance",
+  "advancements.void_dimension.monolithic_power.description": "Place a Void Monolith to anchor your presence in the abyss."
+}

@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "active=true": { "model": "void_dimension:block/void_monolith_active" },
+    "active=false": { "model": "void_dimension:block/void_monolith_inactive" }
+  }
+}

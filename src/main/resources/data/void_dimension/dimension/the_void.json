@@ -1,0 +1,11 @@
+{
+  "type": "void_dimension:the_void_type",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "layers": [],
+      "biome": "void_dimension:the_abyss",
+      "structure_overrides": []
+    }
+  }
+}

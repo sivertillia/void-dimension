@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "OEO",
+    "ENE",
+    "OEO"
+  ],
+  "key": {
+    "O": { "item": "minecraft:obsidian" },
+    "E": { "item": "minecraft:end_stone" },
+    "N": { "item": "minecraft:nether_star" }
+  },
+  "result": {
+    "count": 1,
+    "id": "void_dimension:void_monolith"
+  }
+}
