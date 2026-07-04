@@ -6,6 +6,5 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
 public class ModConstants {
-    public static final ResourceKey<Level> VOID_DIMENSION_KEY = ResourceKey.create((ResourceKey)Registries.DIMENSION, (ResourceLocation)ResourceLocation.fromNamespaceAndPath((String)"void_dimension", (String)"the_void"));
+    public static final ResourceKey<Level> VOID_DIMENSION_KEY = ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath("void_dimension", "the_void"));
 }
-

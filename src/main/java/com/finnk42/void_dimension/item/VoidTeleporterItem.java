@@ -4,7 +4,6 @@ import com.finnk42.void_dimension.Config;
 import com.finnk42.void_dimension.init.ModConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
-import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -47,7 +46,7 @@ extends Item {
     }
 
     public boolean isFoil(ItemStack stack) {
-        return (Boolean)Config.ENABLE_TELEPORTER_GLOW.get();
+        return Config.ENABLE_TELEPORTER_GLOW.get();
     }
 
     public void onUseTick(Level level, LivingEntity entity, ItemStack stack, int remainingUseDuration) {
@@ -62,17 +61,16 @@ extends Item {
                 double y = entity.getY() + 0.1;
                 double z = entity.getZ() + radius * Math.sin(angle);
                 DustParticleOptions currentColor = i % 2 == 0 ? darkVoid : lightVoid;
-                level.addParticle((ParticleOptions)currentColor, x, y, z, 0.0, 0.0, 0.0);
+                level.addParticle(currentColor, x, y, z, 0.0, 0.0, 0.0);
             }
             if (remainingUseDuration < 20) {
-                level.addParticle((ParticleOptions)ParticleTypes.END_ROD, entity.getX() + (level.random.nextDouble() - 0.5) * 2.0, entity.getY() + level.random.nextDouble(), entity.getZ() + (level.random.nextDouble() - 0.5) * 2.0, 0.0, 0.05, 0.0);
+                level.addParticle(ParticleTypes.END_ROD, entity.getX() + (level.random.nextDouble() - 0.5) * 2.0, entity.getY() + level.random.nextDouble(), entity.getZ() + (level.random.nextDouble() - 0.5) * 2.0, 0.0, 0.05, 0.0);
             }
         }
     }
 
     public ItemStack finishUsingItem(ItemStack stack, Level level, LivingEntity entityLiving) {
-        if (!level.isClientSide() && entityLiving instanceof ServerPlayer) {
-            ServerPlayer player = (ServerPlayer)entityLiving;
+        if (!level.isClientSide() && entityLiving instanceof ServerPlayer player) {
             ServerLevel currentLevel = player.serverLevel();
             currentLevel.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
             CompoundTag playerData = player.getPersistentData();
@@ -91,14 +89,14 @@ extends Item {
                     player.fallDistance = 0.0f;
                     player.setDeltaMovement(Vec3.ZERO);
                     player.hurtMarked = true;
-                    DimensionTransition transition = new DimensionTransition(voidLevel, new Vec3((double)targetPos.getX() + 0.5, (double)targetPos.getY(), (double)targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
+                    DimensionTransition transition = new DimensionTransition(voidLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
                     player.changeDimension(transition);
                 }
             } else {
                 ServerLevel returnLevel = player.getServer().getLevel(Level.OVERWORLD);
                 if (playerData.contains("VoidReturnDim")) {
-                    ResourceLocation dimLoc = ResourceLocation.parse((String)playerData.getString("VoidReturnDim"));
-                    ResourceKey savedDimKey = ResourceKey.create((ResourceKey)Registries.DIMENSION, (ResourceLocation)dimLoc);
+                    ResourceLocation dimLoc = ResourceLocation.parse(playerData.getString("VoidReturnDim"));
+                    ResourceKey<Level> savedDimKey = ResourceKey.create(Registries.DIMENSION, dimLoc);
                     ServerLevel savedLevel = player.getServer().getLevel(savedDimKey);
                     if (savedLevel != null) {
                         returnLevel = savedLevel;
@@ -109,7 +107,7 @@ extends Item {
                     player.fallDistance = 0.0f;
                     player.setDeltaMovement(Vec3.ZERO);
                     player.hurtMarked = true;
-                    DimensionTransition transition = new DimensionTransition(returnLevel, new Vec3((double)targetPos.getX() + 0.5, (double)targetPos.getY(), (double)targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
+                    DimensionTransition transition = new DimensionTransition(returnLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
                     player.changeDimension(transition);
                 }
             }
@@ -117,4 +115,3 @@ extends Item {
         return stack;
     }
 }
-
