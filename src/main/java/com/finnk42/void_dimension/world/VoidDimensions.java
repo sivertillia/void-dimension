@@ -28,22 +28,18 @@ import net.neoforged.neoforge.event.level.LevelEvent;
 public final class VoidDimensions {
     public static final String NAMESPACE = "void_dimension";
     private static final ResourceLocation TEMPLATE = ResourceLocation.fromNamespaceAndPath(NAMESPACE, "the_void");
-    private static final String PLAYER_PREFIX = "void_";
 
     private VoidDimensions() {
     }
 
-    /** The dimension key for a given player's private void. */
+    /** The dimension key for a given player's private void: {@code void_dimension:<uuid>}. */
     public static ResourceKey<Level> keyForPlayer(UUID playerId) {
-        String path = PLAYER_PREFIX + playerId.toString().replace('-', '_');
-        return ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(NAMESPACE, path));
+        return ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(NAMESPACE, playerId.toString()));
     }
 
-    /** True if the given dimension is one of this mod's per-player voids (or the template). */
+    /** True if the given dimension belongs to this mod (any per-player void, or the template). */
     public static boolean isVoid(ResourceKey<Level> dimension) {
-        ResourceLocation loc = dimension.location();
-        return loc.getNamespace().equals(NAMESPACE)
-                && (loc.getPath().startsWith(PLAYER_PREFIX) || loc.getPath().equals("the_void"));
+        return dimension.location().getNamespace().equals(NAMESPACE);
     }
 
     /** Returns the player's void level, creating and registering it if it does not exist yet. */
