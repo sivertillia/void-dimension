@@ -1,6 +1,7 @@
 package com.finnk42.void_dimension.world;
 
 import com.google.common.collect.ImmutableList;
+import java.nio.file.Files;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -46,6 +47,17 @@ public final class VoidDimensions {
     /** True if the given dimension belongs to this mod (any per-player void, or the template). */
     public static boolean isVoid(ResourceKey<Level> dimension) {
         return dimension.location().getNamespace().equals(NAMESPACE);
+    }
+
+    /**
+     * True if this void already exists — either currently loaded, or previously created and saved to
+     * disk. Lets callers avoid fabricating a brand-new world for a player who never entered one.
+     */
+    public static boolean exists(MinecraftServer server, ResourceKey<Level> levelKey) {
+        if (server.getLevel(levelKey) != null) {
+            return true;
+        }
+        return Files.isDirectory(server.storageSource.getDimensionPath(levelKey));
     }
 
     /** Returns the player's void level, creating and registering it if it does not exist yet. */
