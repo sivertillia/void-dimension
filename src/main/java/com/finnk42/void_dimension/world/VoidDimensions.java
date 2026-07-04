@@ -85,6 +85,10 @@ public final class VoidDimensions {
         }
 
         server.levels.put(levelKey, newLevel);
+        // NeoForge ticks a cached snapshot of the level list (server.getWorldArray()); without this the
+        // new level never ticks, so block-change packets are never flushed to clients (blocks appear
+        // unbreakable until relog). markWorldsDirty() invalidates that snapshot so our level ticks.
+        server.markWorldsDirty();
         NeoForge.EVENT_BUS.post(new LevelEvent.Load(newLevel));
         return newLevel;
     }
