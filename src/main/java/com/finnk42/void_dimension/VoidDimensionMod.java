@@ -1,6 +1,7 @@
 package com.finnk42.void_dimension;
 
 import com.finnk42.void_dimension.block.VoidMonolithBlock;
+import com.finnk42.void_dimension.command.VoidCommand;
 import com.finnk42.void_dimension.item.VoidTeleporterItem;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -13,7 +14,9 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -31,7 +34,12 @@ public class VoidDimensionMod {
         ITEMS.register(modEventBus);
         BLOCKS.register(modEventBus);
         modEventBus.addListener(this::addCreative);
+        NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+    }
+
+    private void onRegisterCommands(RegisterCommandsEvent event) {
+        VoidCommand.register(event.getDispatcher());
     }
 
     private void addCreative(BuildCreativeModeTabContentsEvent event) {

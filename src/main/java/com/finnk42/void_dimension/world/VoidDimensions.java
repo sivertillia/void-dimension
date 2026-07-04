@@ -2,19 +2,25 @@ package com.finnk42.void_dimension.world;
 
 import com.google.common.collect.ImmutableList;
 import java.util.UUID;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.progress.ChunkProgressListener;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.BiomeManager;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.border.BorderChangeListener;
 import net.minecraft.world.level.dimension.LevelStem;
+import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.ServerLevelData;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.LevelEvent;
 
@@ -49,6 +55,31 @@ public final class VoidDimensions {
             return existing;
         }
         return createAndRegister(server, levelKey);
+    }
+
+    /**
+     * Teleports a player into the given void level: places a landing platform, records where the
+     * player came from (so the teleporter can return them) and moves them to the spawn point.
+     */
+    public static void sendToVoid(ServerPlayer player, ServerLevel voidLevel) {
+        ServerLevel from = player.serverLevel();
+        if (!isVoid(from.dimension())) {
+            CompoundTag data = player.getPersistentData();
+            data.putInt("VoidReturnX", player.getBlockX());
+            data.putInt("VoidReturnY", player.getBlockY());
+            data.putInt("VoidReturnZ", player.getBlockZ());
+            data.putString("VoidReturnDim", from.dimension().location().toString());
+        }
+        BlockPos targetPos = new BlockPos(0, 100, 0);
+        BlockPos belowPos = targetPos.below();
+        if (voidLevel.isEmptyBlock(belowPos) || !voidLevel.getFluidState(belowPos).isEmpty()) {
+            voidLevel.setBlockAndUpdate(belowPos, Blocks.OBSIDIAN.defaultBlockState());
+        }
+        player.fallDistance = 0.0f;
+        player.setDeltaMovement(Vec3.ZERO);
+        player.hurtMarked = true;
+        DimensionTransition transition = new DimensionTransition(voidLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
+        player.changeDimension(transition);
     }
 
     private static ServerLevel createAndRegister(MinecraftServer server, ResourceKey<Level> levelKey) {

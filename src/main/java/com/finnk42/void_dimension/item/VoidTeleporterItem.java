@@ -22,7 +22,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
@@ -76,25 +75,12 @@ extends Item {
             currentLevel.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
             CompoundTag playerData = player.getPersistentData();
             if (!VoidDimensions.isVoid(currentLevel.dimension())) {
-                playerData.putInt("VoidReturnX", player.getBlockX());
-                playerData.putInt("VoidReturnY", player.getBlockY());
-                playerData.putInt("VoidReturnZ", player.getBlockZ());
-                playerData.putString("VoidReturnDim", currentLevel.dimension().location().toString());
                 // Creating a dimension mutates the server's level map, which is being iterated during
                 // the tick that runs this method — defer it one tick to avoid a ConcurrentModificationException.
                 MinecraftServer server = player.getServer();
                 server.execute(() -> {
                     ServerLevel voidLevel = VoidDimensions.getOrCreate(server, VoidDimensions.keyForPlayer(player.getUUID()));
-                    BlockPos targetPos = new BlockPos(0, 100, 0);
-                    BlockPos belowPos = targetPos.below();
-                    if (voidLevel.isEmptyBlock(belowPos) || !voidLevel.getFluidState(belowPos).isEmpty()) {
-                        voidLevel.setBlockAndUpdate(belowPos, Blocks.OBSIDIAN.defaultBlockState());
-                    }
-                    player.fallDistance = 0.0f;
-                    player.setDeltaMovement(Vec3.ZERO);
-                    player.hurtMarked = true;
-                    DimensionTransition transition = new DimensionTransition(voidLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
-                    player.changeDimension(transition);
+                    VoidDimensions.sendToVoid(player, voidLevel);
                 });
             } else {
                 ServerLevel returnLevel = player.getServer().getLevel(Level.OVERWORLD);
