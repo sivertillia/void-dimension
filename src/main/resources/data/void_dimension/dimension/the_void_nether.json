@@ -1,0 +1,11 @@
+{
+  "type": "void_dimension:the_void_nether_type",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "layers": [],
+      "biome": "void_dimension:the_burning_abyss",
+      "structure_overrides": []
+    }
+  }
+}

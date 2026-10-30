@@ -14,6 +14,10 @@ invite others in.
   created on demand the first time they enter and saved to its own region files. Nobody shares a
   world, so builds never collide. Dimensions are created dynamically at runtime (Minecraft has no
   public API for this — the mod ships a small access transformer to make it work).
+- **Choose your world type.** The first time you use your teleporter, a menu lets you pick what
+  your void looks like: **Overworld** (blue sky, eternal day frozen at 12:00), **Nether** (red fog,
+  water evaporates) or **End** (the original dark void). The choice is saved per player; voids
+  created before this feature stay End. No mobs spawn naturally in any type.
 - **Void Teleporter.** Channel the item (bow-like animation, swirling void particles) to travel:
   - **Unnamed** → your own void, and back again from inside it (remembers where you came from).
   - **Renamed to a player's nick** (e.g. in an anvil) → *that* player's void, if it exists and you

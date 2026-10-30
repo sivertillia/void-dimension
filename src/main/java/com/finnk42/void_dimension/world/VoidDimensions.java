@@ -34,13 +34,11 @@ import net.neoforged.neoforge.event.level.LevelEvent;
  * Creates and tracks a separate void dimension per player at runtime. Minecraft has no public API
  * for dynamic dimensions, so we build the {@link ServerLevel} ourselves and insert it into the
  * server's level map (the private fields are opened via {@code META-INF/accesstransformer.cfg}).
- * Every player's void reuses the dimension type and generator of the datapack-defined
- * {@code void_dimension:the_void}, which acts purely as a template.
+ * Every player's void reuses the dimension type and generator of one of the datapack-defined
+ * template dimensions (see {@link VoidType}), chosen by the owner the first time they enter.
  */
 public final class VoidDimensions {
     public static final String NAMESPACE = "void_dimension";
-    private static final ResourceLocation TEMPLATE = ResourceLocation.fromNamespaceAndPath(NAMESPACE, "the_void");
-
     private VoidDimensions() {
     }
 
@@ -54,12 +52,29 @@ public final class VoidDimensions {
         return dimension.location().getNamespace().equals(NAMESPACE);
     }
 
+    /** The owner of a per-player void, or null if the key is not one (e.g. a template dimension). */
+    public static UUID ownerOf(ResourceKey<Level> dimension) {
+        if (!isVoid(dimension)) {
+            return null;
+        }
+        try {
+            return UUID.fromString(dimension.location().getPath());
+        } catch (IllegalArgumentException notAPlayerVoid) {
+            return null;
+        }
+    }
+
     /**
-     * True if this void already exists — either currently loaded, or previously created and saved to
-     * disk. Lets callers avoid fabricating a brand-new world for a player who never entered one.
+     * True if this void already exists — either currently loaded, previously created and saved to
+     * disk, or with a type already chosen. Lets callers avoid fabricating a brand-new world for a
+     * player who never entered one.
      */
     public static boolean exists(MinecraftServer server, ResourceKey<Level> levelKey) {
         if (server.getLevel(levelKey) != null) {
+            return true;
+        }
+        UUID owner = ownerOf(levelKey);
+        if (owner != null && VoidTypes.get(server).has(owner)) {
             return true;
         }
         return Files.isDirectory(server.storageSource.getDimensionPath(levelKey));
@@ -67,13 +82,13 @@ public final class VoidDimensions {
 
     /**
      * All per-player voids that currently exist — both loaded levels and dimensions saved to disk from
-     * a previous session. The template {@code the_void} is excluded.
+     * a previous session. The template dimensions are excluded.
      */
     public static Set<ResourceKey<Level>> listExisting(MinecraftServer server) {
         Set<ResourceKey<Level>> result = new LinkedHashSet<>();
         for (ServerLevel level : server.getAllLevels()) {
             ResourceKey<Level> key = level.dimension();
-            if (isVoid(key) && !key.location().getPath().equals("the_void")) {
+            if (ownerOf(key) != null) {
                 result.add(key);
             }
         }
@@ -104,6 +119,21 @@ public final class VoidDimensions {
     }
 
     /**
+     * Creates the player's own void with the chosen type and sends them into it. Called once, from the
+     * {@link com.finnk42.void_dimension.menu.VoidTypeMenu} shown on their first trip; does nothing if
+     * the void already exists.
+     */
+    public static void createAndEnter(ServerPlayer player, VoidType type) {
+        MinecraftServer server = player.getServer();
+        ResourceKey<Level> key = keyForPlayer(player.getUUID());
+        if (exists(server, key)) {
+            return;
+        }
+        VoidTypes.get(server).set(player.getUUID(), type);
+        sendToVoid(player, getOrCreate(server, key));
+    }
+
+    /**
      * Teleports a player into the given void level: places a landing platform, records where the
      * player came from (so the teleporter can return them) and moves them to the spawn point.
      */
@@ -130,9 +160,11 @@ public final class VoidDimensions {
 
     private static ServerLevel createAndRegister(MinecraftServer server, ResourceKey<Level> levelKey) {
         Registry<LevelStem> stemRegistry = server.registryAccess().registryOrThrow(Registries.LEVEL_STEM);
-        LevelStem template = stemRegistry.get(TEMPLATE);
+        UUID owner = ownerOf(levelKey);
+        ResourceLocation templateId = (owner == null ? VoidType.END : VoidTypes.get(server).typeOf(owner)).template();
+        LevelStem template = stemRegistry.get(templateId);
         if (template == null) {
-            throw new IllegalStateException("Missing template void dimension: " + TEMPLATE);
+            throw new IllegalStateException("Missing template void dimension: " + templateId);
         }
         LevelStem stem = new LevelStem(template.type(), template.generator());
 

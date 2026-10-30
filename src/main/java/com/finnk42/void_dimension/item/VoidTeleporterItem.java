@@ -1,6 +1,7 @@
 package com.finnk42.void_dimension.item;
 
 import com.finnk42.void_dimension.Config;
+import com.finnk42.void_dimension.menu.VoidTypeMenu;
 import com.finnk42.void_dimension.world.VoidAccess;
 import com.finnk42.void_dimension.world.VoidDimensions;
 import com.mojang.authlib.GameProfile;
@@ -86,7 +87,10 @@ extends Item {
                 // an unnamed one targets your own. Returns null if the trip is not allowed (a message
                 // was already sent to the player).
                 ResourceKey<Level> destination = resolveDestination(player, server, stack);
-                if (destination != null) {
+                if (destination != null && destination.equals(VoidDimensions.keyForPlayer(player.getUUID())) && !VoidDimensions.exists(server, destination)) {
+                    // First trip: let the player pick what their void looks like; the menu creates it.
+                    VoidTypeMenu.open(player);
+                } else if (destination != null) {
                     currentLevel.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
                     // Creating a dimension mutates the server's level map, which is being iterated during
                     // the tick that runs this method — defer it one tick to avoid a ConcurrentModificationException.
