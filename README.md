@@ -4,7 +4,7 @@ A NeoForge mod for **Minecraft 1.21.1** (NeoForge 21.1.234) that gives every pla
 private void dimension** — a dark, empty pocket world to build in, with an access system so you can
 invite others in.
 
-> Author: FinnK42 · Version: 1.0.1 · License: MIT
+> Author: FinnK42 · Version: 1.0.2 · License: MIT
 >
 > 🇺🇦 Опис українською — див. [README_UA.md](README_UA.md).
 
