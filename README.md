@@ -18,6 +18,9 @@ invite others in.
   your void looks like: **Overworld** (blue sky, eternal day frozen at 12:00), **Nether** (red fog,
   water evaporates) or **End** (the original dark void). The choice is saved per player; voids
   created before this feature stay End. No mobs spawn naturally in any type.
+- **Void settings.** `/void setting local` opens a menu of on/off options for your own void. Currently:
+  **Fall loop**, which makes anything that falls out of the bottom (players, items, mobs) reappear at the
+  top with its speed kept, instead of dying in the void.
 - **Void Teleporter.** Channel the item (bow-like animation, swirling void particles) to travel:
   - **Unnamed** → your own void, and back again from inside it (remembers where you came from).
   - **Renamed to a player's nick** (e.g. in an anvil) → *that* player's void, if it exists and you
@@ -36,6 +39,7 @@ All under `/void`:
 | `/void access <player>` | everyone | allow a player into **your** void |
 | `/void revoke <player>` | everyone | remove a player's access to your void |
 | `/void my list`         | everyone | list who you have granted access to your void |
+| `/void setting local` | everyone | open your void's settings menu (e.g. **Fall loop**: fall out of the bottom, reappear at the top) |
 | `/void tp <player>`     | operators | teleport into any existing player's void |
 | `/void list`            | operators | list every void that currently exists |
 | `/void remove <player>` | operators | permanently delete a player's void (anyone inside is sent back out; the owner picks a type again next time) |

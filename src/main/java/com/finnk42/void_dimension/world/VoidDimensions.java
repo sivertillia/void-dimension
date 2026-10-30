@@ -203,8 +203,8 @@ public final class VoidDimensions {
 
     /**
      * Permanently deletes a player's void: everyone inside is sent back out, the level is unloaded and
-     * its folder removed, and the owner's recorded name and type are forgotten, so their next trip
-     * starts over with the type menu. Access lists are kept. Must not run while the server is iterating
+     * its folder removed, and the owner's recorded name, type and settings are forgotten, so their next
+     * trip starts over with the type menu. Access lists are kept. Must not run while the server is iterating
      * its levels (defer it with {@code server.execute}). Returns false if the player had no void.
      */
     public static boolean delete(MinecraftServer server, GameProfile owner) throws IOException {
@@ -233,6 +233,7 @@ public final class VoidDimensions {
         }
         VoidNames.get(server).remove(owner.getId());
         VoidTypes.get(server).remove(owner.getId());
+        VoidSettings.get(server).remove(owner.getId());
         return true;
     }
 

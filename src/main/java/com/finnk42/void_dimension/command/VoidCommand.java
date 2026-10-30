@@ -1,5 +1,6 @@
 package com.finnk42.void_dimension.command;
 
+import com.finnk42.void_dimension.menu.VoidSettingsMenu;
 import com.finnk42.void_dimension.world.VoidAccess;
 import com.finnk42.void_dimension.world.VoidDimensions;
 import com.mojang.authlib.GameProfile;
@@ -31,6 +32,7 @@ import net.minecraft.world.level.Level;
  *   <li>{@code /void access <player>} — anyone; allow a player into your own void.</li>
  *   <li>{@code /void revoke <player>} — anyone; remove a player's access to your void.</li>
  *   <li>{@code /void my list} — anyone; list who you have granted access to your own void.</li>
+ *   <li>{@code /void setting local} — anyone; open the settings menu of your own void.</li>
  *   <li>{@code /void tp <player>} — operators only; teleport into any existing player's void.</li>
  *   <li>{@code /void list} — operators only; list every void that currently exists.</li>
  *   <li>{@code /void remove <player>} — operators only; permanently delete a player's void.</li>
@@ -43,6 +45,8 @@ public final class VoidCommand {
             new SimpleCommandExceptionType(Component.literal("You always have access to your own void."));
     private static final DynamicCommandExceptionType ERROR_NO_VOID =
             new DynamicCommandExceptionType(name -> Component.literal(name + " has no void dimension yet."));
+    private static final SimpleCommandExceptionType ERROR_NO_OWN_VOID =
+            new SimpleCommandExceptionType(Component.literal("You don't have a void yet — use a Void Teleporter first."));
     private static final DynamicCommandExceptionType ERROR_NO_ACCESS =
             new DynamicCommandExceptionType(name -> Component.literal(name + " has not allowed you into their void."));
 
@@ -61,6 +65,9 @@ public final class VoidCommand {
                 .then(Commands.literal("my")
                         .then(Commands.literal("list")
                                 .executes(ctx -> myAccessList(ctx.getSource()))))
+                .then(Commands.literal("setting")
+                        .then(Commands.literal("local")
+                                .executes(ctx -> openLocalSettings(ctx.getSource()))))
                 // Operators only: teleport into any existing player's void.
                 .then(Commands.literal("tp")
                         .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
@@ -121,6 +128,16 @@ public final class VoidCommand {
             VoidDimensions.sendToVoid(runner, voidLevel);
         });
         source.sendSuccess(() -> Component.literal("Teleporting to " + target.getName() + "'s void..."), false);
+        return 1;
+    }
+
+    private static int openLocalSettings(CommandSourceStack source) throws CommandSyntaxException {
+        ServerPlayer runner = source.getPlayerOrException();
+        MinecraftServer server = source.getServer();
+        if (!VoidDimensions.exists(server, VoidDimensions.keyForPlayer(server, runner.getGameProfile()))) {
+            throw ERROR_NO_OWN_VOID.create();
+        }
+        VoidSettingsMenu.open(runner, runner.getUUID());
         return 1;
     }
 
