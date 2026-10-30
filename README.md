@@ -15,12 +15,18 @@ invite others in.
   world, so builds never collide. Dimensions are created dynamically at runtime (Minecraft has no
   public API for this — the mod ships a small access transformer to make it work).
 - **Choose your world type.** The first time you use your teleporter, a menu lets you pick what
-  your void looks like: **Overworld** (blue sky, eternal day frozen at 12:00), **Nether** (red fog,
+  your void looks like: **Overworld** (blue sky, noon by default), **Nether** (red fog,
   water evaporates) or **End** (the original dark void). The choice is saved per player; voids
   created before this feature stay End. No mobs spawn naturally in any type.
-- **Void settings.** `/void setting local` opens a menu of on/off options for your own void. Currently:
-  **Fall loop**, which makes anything that falls out of the bottom (players, items, mobs) reappear at the
-  top with its speed kept, instead of dying in the void.
+- **Void settings.** `/void setting local` opens a menu for your own void:
+  - **Type**: switch between Overworld, Nether and End at any time; builds are kept, anyone inside is
+    moved out and straight back.
+  - **Time of day** (Overworld): noon, sunset, midnight, sunrise, or the normal day/night cycle.
+  - **Spawn point**: where visitors arrive (left-click sets it to where you stand, right-click resets).
+  - **Users**: every online player (plus offline players with access); click to grant or revoke access.
+  - Toggles: **Fall loop** (fall out of the bottom, reappear at the top; off by default), **Guests can
+    build** (on), **PvP** (on), **Keep inventory** (off), **Visitor notices** (on: you're told when
+    someone enters or leaves your void).
 - **Void Teleporter.** Channel the item (bow-like animation, swirling void particles) to travel:
   - **Unnamed** → your own void, and back again from inside it (remembers where you came from).
   - **Renamed to a player's nick** (e.g. in an anvil) → *that* player's void, if it exists and you
@@ -39,7 +45,7 @@ All under `/void`:
 | `/void access <player>` | everyone | allow a player into **your** void |
 | `/void revoke <player>` | everyone | remove a player's access to your void |
 | `/void my list`         | everyone | list who you have granted access to your void |
-| `/void setting local` | everyone | open your void's settings menu (e.g. **Fall loop**: fall out of the bottom, reappear at the top) |
+| `/void setting local` | everyone | open your void's settings menu (type, time, spawn, users, toggles) |
 | `/void tp <player>`     | operators | teleport into any existing player's void |
 | `/void list`            | operators | list every void that currently exists |
 | `/void remove <player>` | operators | permanently delete a player's void (anyone inside is sent back out; the owner picks a type again next time) |

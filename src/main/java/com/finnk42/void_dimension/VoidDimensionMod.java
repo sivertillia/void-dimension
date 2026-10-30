@@ -3,7 +3,7 @@ package com.finnk42.void_dimension;
 import com.finnk42.void_dimension.block.VoidMonolithBlock;
 import com.finnk42.void_dimension.command.VoidCommand;
 import com.finnk42.void_dimension.item.VoidTeleporterItem;
-import com.finnk42.void_dimension.world.VoidFallLoop;
+import com.finnk42.void_dimension.world.VoidRules;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
@@ -36,7 +36,7 @@ public class VoidDimensionMod {
         BLOCKS.register(modEventBus);
         modEventBus.addListener(this::addCreative);
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
-        NeoForge.EVENT_BUS.addListener(VoidFallLoop::onEntityTick);
+        VoidRules.register(NeoForge.EVENT_BUS);
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
 

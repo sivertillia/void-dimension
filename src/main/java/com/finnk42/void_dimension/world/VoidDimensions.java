@@ -7,7 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -28,7 +30,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.border.BorderChangeListener;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.portal.DimensionTransition;
-import net.minecraft.world.level.storage.DerivedLevelData;
 import net.minecraft.world.level.storage.ServerLevelData;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
@@ -43,6 +44,7 @@ import net.neoforged.neoforge.event.level.LevelEvent;
  */
 public final class VoidDimensions {
     public static final String NAMESPACE = "void_dimension";
+    private static final Set<UUID> RELOCATING = new HashSet<>();
     private VoidDimensions() {
     }
 
@@ -151,8 +153,9 @@ public final class VoidDimensions {
     }
 
     /**
-     * Teleports a player into the given void level: places a landing platform, records where the
-     * player came from (so the teleporter can return them) and moves them to the spawn point.
+     * Teleports a player into the given void level: records where the player came from (so the
+     * teleporter can return them) and moves them to the owner's custom spawn point, or else to the
+     * default one at 0 100 0, placing a landing block there if needed.
      */
     public static void sendToVoid(ServerPlayer player, ServerLevel voidLevel) {
         ServerLevel from = player.serverLevel();
@@ -163,16 +166,25 @@ public final class VoidDimensions {
             data.putInt("VoidReturnZ", player.getBlockZ());
             data.putString("VoidReturnDim", from.dimension().location().toString());
         }
-        BlockPos targetPos = new BlockPos(0, 100, 0);
-        BlockPos belowPos = targetPos.below();
-        if (voidLevel.isEmptyBlock(belowPos) || !voidLevel.getFluidState(belowPos).isEmpty()) {
-            voidLevel.setBlockAndUpdate(belowPos, Blocks.OBSIDIAN.defaultBlockState());
+        UUID owner = ownerOf(player.getServer(), voidLevel.dimension());
+        VoidSettings.Spawn spawn = owner == null ? null : VoidSettings.get(player.getServer()).spawn(owner);
+        Vec3 target;
+        float yaw = player.getYRot();
+        if (spawn != null) {
+            target = spawn.pos();
+            yaw = spawn.yaw();
+        } else {
+            BlockPos targetPos = new BlockPos(0, 100, 0);
+            BlockPos belowPos = targetPos.below();
+            if (voidLevel.isEmptyBlock(belowPos) || !voidLevel.getFluidState(belowPos).isEmpty()) {
+                voidLevel.setBlockAndUpdate(belowPos, Blocks.OBSIDIAN.defaultBlockState());
+            }
+            target = Vec3.atBottomCenterOf(targetPos);
         }
         player.fallDistance = 0.0f;
         player.setDeltaMovement(Vec3.ZERO);
         player.hurtMarked = true;
-        DimensionTransition transition = new DimensionTransition(voidLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
-        player.changeDimension(transition);
+        player.changeDimension(new DimensionTransition(voidLevel, target, Vec3.ZERO, yaw, player.getXRot(), DimensionTransition.DO_NOTHING));
     }
 
     /**
@@ -218,10 +230,7 @@ public final class VoidDimensions {
                 sendBack(player);
                 player.displayClientMessage(Component.literal("This void has been deleted."), true);
             }
-            server.levels.remove(key);
-            server.markWorldsDirty();
-            NeoForge.EVENT_BUS.post(new LevelEvent.Unload(level));
-            level.close();
+            unload(server, level);
         }
         Path folder = server.storageSource.getDimensionPath(key);
         if (Files.isDirectory(folder)) {
@@ -237,6 +246,58 @@ public final class VoidDimensions {
         return true;
     }
 
+    /**
+     * Switches the owner's void to another type. A level's dimension type can't change in place, so if
+     * the void is loaded everyone inside is moved out, the level is saved and reloaded from the new
+     * template, and they are brought back to where they stood. Old chunks get the new biome as they
+     * load (see {@link VoidRules}). Must not run while the server is iterating its levels.
+     */
+    public static void changeType(MinecraftServer server, UUID owner, VoidType type) throws IOException {
+        VoidTypes types = VoidTypes.get(server);
+        if (types.typeOf(owner) == type) {
+            return;
+        }
+        types.set(owner, type);
+        String path = VoidNames.get(server).pathOf(owner);
+        ServerLevel level = path == null ? null : server.getLevel(key(path));
+        if (level == null) {
+            return; // picked up the next time the void loads
+        }
+        record Stay(ServerPlayer player, Vec3 pos, float yRot, float xRot) {
+        }
+        List<Stay> inside = new ArrayList<>();
+        for (ServerPlayer player : level.players()) {
+            inside.add(new Stay(player, player.position(), player.getYRot(), player.getXRot()));
+        }
+        try {
+            for (Stay stay : inside) {
+                RELOCATING.add(stay.player().getUUID());
+                sendBack(stay.player());
+            }
+            unload(server, level);
+            ServerLevel reloaded = createAndRegister(server, level.dimension());
+            for (Stay stay : inside) {
+                stay.player().changeDimension(new DimensionTransition(reloaded, stay.pos(), Vec3.ZERO, stay.yRot(), stay.xRot(), DimensionTransition.DO_NOTHING));
+            }
+        } finally {
+            inside.forEach(stay -> RELOCATING.remove(stay.player().getUUID()));
+        }
+    }
+
+    /** True while a player is being moved out and back in by {@link #changeType} (no visitor notices). */
+    public static boolean isRelocating(ServerPlayer player) {
+        return RELOCATING.contains(player.getUUID());
+    }
+
+    /** Saves a loaded void, removes it from the server and closes it. */
+    private static void unload(MinecraftServer server, ServerLevel level) throws IOException {
+        level.save(null, true, false);
+        server.levels.remove(level.dimension());
+        server.markWorldsDirty();
+        NeoForge.EVENT_BUS.post(new LevelEvent.Unload(level));
+        level.close();
+    }
+
     private static ServerLevel createAndRegister(MinecraftServer server, ResourceKey<Level> levelKey) {
         Registry<LevelStem> stemRegistry = server.registryAccess().registryOrThrow(Registries.LEVEL_STEM);
         UUID owner = ownerOf(server, levelKey);
@@ -248,7 +309,7 @@ public final class VoidDimensions {
         LevelStem stem = new LevelStem(template.type(), template.generator());
 
         ServerLevelData overworldData = server.getWorldData().overworldData();
-        DerivedLevelData levelData = new DerivedLevelData(server.getWorldData(), overworldData);
+        VoidLevelData levelData = new VoidLevelData(server.getWorldData(), overworldData, server, owner);
         long biomeZoomSeed = BiomeManager.obfuscateSeed(server.getWorldData().worldGenOptions().seed());
         ChunkProgressListener progressListener = server.progressListenerFactory.create(11);
 
