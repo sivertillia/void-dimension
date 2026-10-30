@@ -5,6 +5,8 @@ import com.mojang.authlib.GameProfile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -13,6 +15,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -170,6 +173,67 @@ public final class VoidDimensions {
         player.hurtMarked = true;
         DimensionTransition transition = new DimensionTransition(voidLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
         player.changeDimension(transition);
+    }
+
+    /**
+     * Sends a player out of a void, back to where they came from before entering it (recorded by
+     * {@link #sendToVoid}), or to the overworld spawn if that is unknown or no longer loaded.
+     */
+    public static void sendBack(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        CompoundTag data = player.getPersistentData();
+        ServerLevel returnLevel = server.getLevel(Level.OVERWORLD);
+        if (data.contains("VoidReturnDim")) {
+            ResourceKey<Level> savedDimKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(data.getString("VoidReturnDim")));
+            ServerLevel savedLevel = server.getLevel(savedDimKey);
+            if (savedLevel != null) {
+                returnLevel = savedLevel;
+            }
+        }
+        if (returnLevel == null) {
+            return;
+        }
+        BlockPos targetPos = data.contains("VoidReturnX") ? new BlockPos(data.getInt("VoidReturnX"), data.getInt("VoidReturnY"), data.getInt("VoidReturnZ")) : returnLevel.getSharedSpawnPos();
+        player.fallDistance = 0.0f;
+        player.setDeltaMovement(Vec3.ZERO);
+        player.hurtMarked = true;
+        DimensionTransition transition = new DimensionTransition(returnLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
+        player.changeDimension(transition);
+    }
+
+    /**
+     * Permanently deletes a player's void: everyone inside is sent back out, the level is unloaded and
+     * its folder removed, and the owner's recorded name and type are forgotten, so their next trip
+     * starts over with the type menu. Access lists are kept. Must not run while the server is iterating
+     * its levels (defer it with {@code server.execute}). Returns false if the player had no void.
+     */
+    public static boolean delete(MinecraftServer server, GameProfile owner) throws IOException {
+        ResourceKey<Level> key = keyForPlayer(server, owner);
+        if (!exists(server, key)) {
+            return false;
+        }
+        ServerLevel level = server.getLevel(key);
+        if (level != null) {
+            for (ServerPlayer player : new ArrayList<>(level.players())) {
+                sendBack(player);
+                player.displayClientMessage(Component.literal("This void has been deleted."), true);
+            }
+            server.levels.remove(key);
+            server.markWorldsDirty();
+            NeoForge.EVENT_BUS.post(new LevelEvent.Unload(level));
+            level.close();
+        }
+        Path folder = server.storageSource.getDimensionPath(key);
+        if (Files.isDirectory(folder)) {
+            try (Stream<Path> files = Files.walk(folder)) {
+                for (Path file : files.sorted(Comparator.reverseOrder()).toList()) {
+                    Files.delete(file);
+                }
+            }
+        }
+        VoidNames.get(server).remove(owner.getId());
+        VoidTypes.get(server).remove(owner.getId());
+        return true;
     }
 
     private static ServerLevel createAndRegister(MinecraftServer server, ResourceKey<Level> levelKey) {

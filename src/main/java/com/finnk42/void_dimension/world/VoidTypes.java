@@ -41,6 +41,12 @@ public class VoidTypes extends SavedData {
         }
     }
 
+    public void remove(UUID owner) {
+        if (this.types.remove(owner) != null) {
+            this.setDirty();
+        }
+    }
+
     private static VoidTypes load(CompoundTag tag, HolderLookup.Provider registries) {
         VoidTypes data = new VoidTypes();
         ListTag entries = tag.getList("Types", Tag.TAG_COMPOUND);

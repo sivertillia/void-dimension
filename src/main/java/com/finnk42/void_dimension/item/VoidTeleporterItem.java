@@ -7,15 +7,11 @@ import com.finnk42.void_dimension.world.VoidDimensions;
 import com.mojang.authlib.GameProfile;
 import java.util.Optional;
 import java.util.UUID;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,8 +26,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.portal.DimensionTransition;
-import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 public class VoidTeleporterItem
@@ -81,7 +75,6 @@ extends Item {
         if (!level.isClientSide() && entityLiving instanceof ServerPlayer player) {
             ServerLevel currentLevel = player.serverLevel();
             MinecraftServer server = player.getServer();
-            CompoundTag playerData = player.getPersistentData();
             if (!VoidDimensions.isVoid(currentLevel.dimension())) {
                 // A teleporter renamed to a player's nick targets that player's void (access-checked);
                 // an unnamed one targets your own. Returns null if the trip is not allowed (a message
@@ -98,23 +91,7 @@ extends Item {
                 }
             } else {
                 currentLevel.playSound(null, player.blockPosition(), SoundEvents.ENDERMAN_TELEPORT, SoundSource.PLAYERS, 1.0f, 1.0f);
-                ServerLevel returnLevel = player.getServer().getLevel(Level.OVERWORLD);
-                if (playerData.contains("VoidReturnDim")) {
-                    ResourceLocation dimLoc = ResourceLocation.parse(playerData.getString("VoidReturnDim"));
-                    ResourceKey<Level> savedDimKey = ResourceKey.create(Registries.DIMENSION, dimLoc);
-                    ServerLevel savedLevel = player.getServer().getLevel(savedDimKey);
-                    if (savedLevel != null) {
-                        returnLevel = savedLevel;
-                    }
-                }
-                if (returnLevel != null) {
-                    BlockPos targetPos = playerData.contains("VoidReturnX") ? new BlockPos(playerData.getInt("VoidReturnX"), playerData.getInt("VoidReturnY"), playerData.getInt("VoidReturnZ")) : returnLevel.getSharedSpawnPos();
-                    player.fallDistance = 0.0f;
-                    player.setDeltaMovement(Vec3.ZERO);
-                    player.hurtMarked = true;
-                    DimensionTransition transition = new DimensionTransition(returnLevel, new Vec3(targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5), Vec3.ZERO, player.getYRot(), player.getXRot(), DimensionTransition.DO_NOTHING);
-                    player.changeDimension(transition);
-                }
+                VoidDimensions.sendBack(player);
             }
         }
         return stack;

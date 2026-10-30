@@ -69,6 +69,12 @@ public class VoidNames extends SavedData {
         }
     }
 
+    public void remove(UUID owner) {
+        if (this.paths.remove(owner) != null) {
+            this.setDirty();
+        }
+    }
+
     private static VoidNames load(CompoundTag tag, HolderLookup.Provider registries) {
         VoidNames data = new VoidNames();
         ListTag entries = tag.getList("Names", Tag.TAG_COMPOUND);

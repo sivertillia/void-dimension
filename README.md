@@ -38,6 +38,7 @@ All under `/void`:
 | `/void my list`         | everyone | list who you have granted access to your void |
 | `/void tp <player>`     | operators | teleport into any existing player's void |
 | `/void list`            | operators | list every void that currently exists |
+| `/void remove <player>` | operators | permanently delete a player's void (anyone inside is sent back out; the owner picks a type again next time) |
 
 Player names resolve through the server profile cache, so commands and the renamed teleporter work
 for offline players too. Commands never create a void that doesn't already exist — only the owner's

@@ -8,6 +8,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -32,6 +33,7 @@ import net.minecraft.world.level.Level;
  *   <li>{@code /void my list} — anyone; list who you have granted access to your own void.</li>
  *   <li>{@code /void tp <player>} — operators only; teleport into any existing player's void.</li>
  *   <li>{@code /void list} — operators only; list every void that currently exists.</li>
+ *   <li>{@code /void remove <player>} — operators only; permanently delete a player's void.</li>
  * </ul>
  */
 public final class VoidCommand {
@@ -67,7 +69,12 @@ public final class VoidCommand {
                 // Operators only: list every void that exists.
                 .then(Commands.literal("list")
                         .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
-                        .executes(ctx -> listVoids(ctx.getSource()))));
+                        .executes(ctx -> listVoids(ctx.getSource())))
+                // Operators only: permanently delete a player's void.
+                .then(Commands.literal("remove")
+                        .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                        .then(Commands.argument("player", GameProfileArgument.gameProfile())
+                                .executes(ctx -> remove(ctx.getSource(), single(ctx))))));
     }
 
     private static GameProfile single(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
@@ -114,6 +121,23 @@ public final class VoidCommand {
             VoidDimensions.sendToVoid(runner, voidLevel);
         });
         source.sendSuccess(() -> Component.literal("Teleporting to " + target.getName() + "'s void..."), false);
+        return 1;
+    }
+
+    private static int remove(CommandSourceStack source, GameProfile target) throws CommandSyntaxException {
+        MinecraftServer server = source.getServer();
+        if (!VoidDimensions.exists(server, VoidDimensions.keyForPlayer(server, target))) {
+            throw ERROR_NO_VOID.create(target.getName());
+        }
+        // Defer: unloading a dimension mutates the server's level list, like loading one in visit().
+        server.execute(() -> {
+            try {
+                VoidDimensions.delete(server, target);
+                source.sendSuccess(() -> Component.literal("Deleted " + target.getName() + "'s void."), true);
+            } catch (IOException e) {
+                source.sendFailure(Component.literal("Failed to delete " + target.getName() + "'s void: " + e.getMessage()));
+            }
+        });
         return 1;
     }
 
