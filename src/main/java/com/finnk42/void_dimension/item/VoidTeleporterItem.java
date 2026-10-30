@@ -87,7 +87,7 @@ extends Item {
                 // an unnamed one targets your own. Returns null if the trip is not allowed (a message
                 // was already sent to the player).
                 ResourceKey<Level> destination = resolveDestination(player, server, stack);
-                if (destination != null && destination.equals(VoidDimensions.keyForPlayer(player.getUUID())) && !VoidDimensions.exists(server, destination)) {
+                if (destination != null && destination.equals(VoidDimensions.keyForPlayer(server, player.getGameProfile())) && !VoidDimensions.exists(server, destination)) {
                     // First trip: let the player pick what their void looks like; the menu creates it.
                     VoidTypeMenu.open(player);
                 } else if (destination != null) {
@@ -130,8 +130,9 @@ extends Item {
     private static ResourceKey<Level> resolveDestination(ServerPlayer player, MinecraftServer server, ItemStack stack) {
         Component customName = stack.get(DataComponents.CUSTOM_NAME);
         if (customName == null) {
-            return VoidDimensions.keyForPlayer(player.getUUID());
+            return VoidDimensions.keyForPlayer(server, player.getGameProfile());
         }
+        // Nicks are matched case-insensitively (the profile cache lower-cases its lookups).
         String targetName = customName.getString().trim();
         GameProfileCache cache = server.getProfileCache();
         Optional<GameProfile> profile = cache == null ? Optional.empty() : cache.get(targetName);
@@ -140,7 +141,7 @@ extends Item {
             return null;
         }
         UUID ownerId = profile.get().getId();
-        ResourceKey<Level> key = VoidDimensions.keyForPlayer(ownerId);
+        ResourceKey<Level> key = VoidDimensions.keyForPlayer(server, profile.get());
         if (!VoidDimensions.exists(server, key)) {
             player.displayClientMessage(Component.literal(targetName + " has no void dimension yet."), true);
             return null;

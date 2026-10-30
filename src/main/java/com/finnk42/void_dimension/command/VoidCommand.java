@@ -98,7 +98,7 @@ public final class VoidCommand {
     private static int visit(CommandSourceStack source, GameProfile target) throws CommandSyntaxException {
         ServerPlayer runner = source.getPlayerOrException();
         MinecraftServer server = source.getServer();
-        ResourceKey<Level> key = VoidDimensions.keyForPlayer(target.getId());
+        ResourceKey<Level> key = VoidDimensions.keyForPlayer(server, target);
         if (!VoidDimensions.exists(server, key)) {
             throw ERROR_NO_VOID.create(target.getName());
         }
@@ -122,7 +122,8 @@ public final class VoidCommand {
         GameProfileCache cache = server.getProfileCache();
         List<String> names = new ArrayList<>();
         for (ResourceKey<Level> key : VoidDimensions.listExisting(server)) {
-            names.add(resolveName(cache, key.location().getPath()));
+            UUID owner = VoidDimensions.ownerOf(server, key);
+            names.add(owner == null ? key.location().getPath() : resolveName(cache, owner.toString()));
         }
         if (names.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No void dimensions exist yet."), false);

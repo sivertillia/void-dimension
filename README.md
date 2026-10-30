@@ -10,7 +10,7 @@ invite others in.
 
 ## Features
 
-- **Per-player void dimensions.** Each player gets a separate dimension (`void_dimension:<uuid>`),
+- **Per-player void dimensions.** Each player gets a separate dimension (`void_dimension:<lowercase nick>`),
   created on demand the first time they enter and saved to its own region files. Nobody shares a
   world, so builds never collide. Dimensions are created dynamically at runtime (Minecraft has no
   public API for this — the mod ships a small access transformer to make it work).

@@ -1,6 +1,7 @@
 package com.finnk42.void_dimension.world;
 
 import com.google.common.collect.ImmutableList;
+import com.mojang.authlib.GameProfile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,9 +43,28 @@ public final class VoidDimensions {
     private VoidDimensions() {
     }
 
-    /** The dimension key for a given player's private void: {@code void_dimension:<uuid>}. */
-    public static ResourceKey<Level> keyForPlayer(UUID playerId) {
-        return ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(NAMESPACE, playerId.toString()));
+    /**
+     * The dimension key for a player's private void: {@code void_dimension:<nick in lower case>}. A
+     * void created under an older nick (or, before voids were named after players, under the UUID) is
+     * moved to the current nick when possible — i.e. while it isn't loaded and the nick is free —
+     * otherwise it keeps its old path. Nothing is recorded for players who have no void yet.
+     */
+    public static ResourceKey<Level> keyForPlayer(MinecraftServer server, GameProfile owner) {
+        VoidNames names = VoidNames.get(server);
+        UUID id = owner.getId();
+        String wanted = names.wantedPath(id, owner.getName());
+        String current = names.pathOf(id);
+        if (current == null) {
+            current = id.toString();
+            if (!Files.isDirectory(dimensionPath(server, current))) {
+                return key(wanted);
+            }
+        }
+        if (!current.equals(wanted) && server.getLevel(key(current)) == null && moveFolder(server, current, wanted)) {
+            current = wanted;
+        }
+        names.assign(id, current);
+        return key(current);
     }
 
     /** True if the given dimension belongs to this mod (any per-player void, or the template). */
@@ -53,15 +73,11 @@ public final class VoidDimensions {
     }
 
     /** The owner of a per-player void, or null if the key is not one (e.g. a template dimension). */
-    public static UUID ownerOf(ResourceKey<Level> dimension) {
-        if (!isVoid(dimension)) {
+    public static UUID ownerOf(MinecraftServer server, ResourceKey<Level> dimension) {
+        if (!isVoid(dimension) || VoidNames.isReserved(dimension.location().getPath())) {
             return null;
         }
-        try {
-            return UUID.fromString(dimension.location().getPath());
-        } catch (IllegalArgumentException notAPlayerVoid) {
-            return null;
-        }
+        return VoidNames.get(server).ownerOf(dimension.location().getPath());
     }
 
     /**
@@ -73,7 +89,7 @@ public final class VoidDimensions {
         if (server.getLevel(levelKey) != null) {
             return true;
         }
-        UUID owner = ownerOf(levelKey);
+        UUID owner = ownerOf(server, levelKey);
         if (owner != null && VoidTypes.get(server).has(owner)) {
             return true;
         }
@@ -88,20 +104,17 @@ public final class VoidDimensions {
         Set<ResourceKey<Level>> result = new LinkedHashSet<>();
         for (ServerLevel level : server.getAllLevels()) {
             ResourceKey<Level> key = level.dimension();
-            if (ownerOf(key) != null) {
+            if (isVoid(key) && !VoidNames.isReserved(key.location().getPath())) {
                 result.add(key);
             }
         }
-        Path namespaceDir = server.storageSource.getDimensionPath(keyForPlayer(new UUID(0L, 0L))).getParent();
+        Path namespaceDir = dimensionPath(server, VoidType.END.template().getPath()).getParent();
         if (namespaceDir != null && Files.isDirectory(namespaceDir)) {
             try (Stream<Path> children = Files.list(namespaceDir)) {
-                children.filter(Files::isDirectory).forEach(dir -> {
-                    try {
-                        result.add(keyForPlayer(UUID.fromString(dir.getFileName().toString())));
-                    } catch (IllegalArgumentException notAPlayerVoid) {
-                        // folder name isn't a UUID (e.g. the template) — ignore
-                    }
-                });
+                children.filter(Files::isDirectory)
+                        .map(dir -> dir.getFileName().toString())
+                        .filter(path -> !VoidNames.isReserved(path))
+                        .forEach(path -> result.add(key(path)));
             } catch (IOException ignored) {
                 // best effort: fall back to whatever is already loaded
             }
@@ -125,10 +138,11 @@ public final class VoidDimensions {
      */
     public static void createAndEnter(ServerPlayer player, VoidType type) {
         MinecraftServer server = player.getServer();
-        ResourceKey<Level> key = keyForPlayer(player.getUUID());
+        ResourceKey<Level> key = keyForPlayer(server, player.getGameProfile());
         if (exists(server, key)) {
             return;
         }
+        VoidNames.get(server).assign(player.getUUID(), key.location().getPath());
         VoidTypes.get(server).set(player.getUUID(), type);
         sendToVoid(player, getOrCreate(server, key));
     }
@@ -160,7 +174,7 @@ public final class VoidDimensions {
 
     private static ServerLevel createAndRegister(MinecraftServer server, ResourceKey<Level> levelKey) {
         Registry<LevelStem> stemRegistry = server.registryAccess().registryOrThrow(Registries.LEVEL_STEM);
-        UUID owner = ownerOf(levelKey);
+        UUID owner = ownerOf(server, levelKey);
         ResourceLocation templateId = (owner == null ? VoidType.END : VoidTypes.get(server).typeOf(owner)).template();
         LevelStem template = stemRegistry.get(templateId);
         if (template == null) {
@@ -200,5 +214,27 @@ public final class VoidDimensions {
         server.markWorldsDirty();
         NeoForge.EVENT_BUS.post(new LevelEvent.Load(newLevel));
         return newLevel;
+    }
+
+    private static ResourceKey<Level> key(String path) {
+        return ResourceKey.create(Registries.DIMENSION, ResourceLocation.fromNamespaceAndPath(NAMESPACE, path));
+    }
+
+    private static Path dimensionPath(MinecraftServer server, String path) {
+        return server.storageSource.getDimensionPath(key(path));
+    }
+
+    /** Renames a void's folder on disk. True if it now lives at the new path (or had no folder yet). */
+    private static boolean moveFolder(MinecraftServer server, String from, String to) {
+        Path source = dimensionPath(server, from);
+        if (!Files.isDirectory(source)) {
+            return true;
+        }
+        try {
+            Files.move(source, dimensionPath(server, to));
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 }
