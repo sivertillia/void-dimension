@@ -33,7 +33,7 @@ public class VoidSettings extends SavedData {
 
     public boolean isEnabled(UUID owner, VoidSetting setting) {
         CompoundTag tag = this.owners.get(owner);
-        return tag != null && tag.contains(setting.name(), Tag.TAG_BYTE) ? tag.getBoolean(setting.name()) : setting.defaultValue();
+        return !setting.hidden() && tag != null && tag.contains(setting.name(), Tag.TAG_BYTE) ? tag.getBoolean(setting.name()) : setting.defaultValue();
     }
 
     /** Flips a setting for the owner's void and returns its new state. */

@@ -8,6 +8,7 @@ import com.finnk42.void_dimension.world.VoidTime;
 import com.finnk42.void_dimension.world.VoidType;
 import com.finnk42.void_dimension.world.VoidTypes;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponents;
@@ -32,7 +33,7 @@ public class VoidSettingsMenu extends VoidMenu {
     private static final int TIME_SLOT = 3;
     private static final int SPAWN_SLOT = 5;
     private static final int USERS_SLOT = 7;
-    private static final VoidSetting[] TOGGLES = VoidSetting.values();
+    private static final VoidSetting[] TOGGLES = Arrays.stream(VoidSetting.values()).filter(setting -> !setting.hidden()).toArray(VoidSetting[]::new);
     /** Slot of the first toggle; the toggles are centred in the second row. */
     private static final int FIRST_TOGGLE_SLOT = 9 + (9 - TOGGLES.length) / 2;
 
@@ -47,8 +48,8 @@ public class VoidSettingsMenu extends VoidMenu {
         this.redrawTime();
         this.redrawSpawn();
         this.redrawUsers();
-        for (VoidSetting setting : TOGGLES) {
-            this.redrawToggle(setting);
+        for (int i = 0; i < TOGGLES.length; ++i) {
+            this.redrawToggle(i);
         }
     }
 
@@ -99,7 +100,7 @@ public class VoidSettingsMenu extends VoidMenu {
                 int index = slot - FIRST_TOGGLE_SLOT;
                 if (index >= 0 && index < TOGGLES.length) {
                     settings.toggle(this.owner, TOGGLES[index]);
-                    this.redrawToggle(TOGGLES[index]);
+                    this.redrawToggle(index);
                     clickSound(player);
                 }
             }
@@ -150,14 +151,15 @@ public class VoidSettingsMenu extends VoidMenu {
                 plain("Click to grant or revoke access.").withStyle(ChatFormatting.DARK_GRAY)));
     }
 
-    private void redrawToggle(VoidSetting setting) {
+    private void redrawToggle(int index) {
+        VoidSetting setting = TOGGLES[index];
         boolean on = VoidSettings.get(this.server).isEnabled(this.owner, setting);
         ItemStack stack = icon(new ItemStack(setting.icon()),
                 plain(setting.title() + ": ").withStyle(ChatFormatting.WHITE).append(plain(on ? "ON" : "OFF").withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED)),
                 plain(setting.description()).withStyle(ChatFormatting.GRAY),
                 plain("Click to toggle.").withStyle(ChatFormatting.DARK_GRAY));
         stack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, on);
-        this.setIcon(FIRST_TOGGLE_SLOT + setting.ordinal(), stack);
+        this.setIcon(FIRST_TOGGLE_SLOT + index, stack);
     }
 
     private static String title(VoidType type) {

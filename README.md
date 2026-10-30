@@ -25,7 +25,7 @@ invite others in.
   - **Spawn point**: where visitors arrive (left-click sets it to where you stand, right-click resets).
   - **Users**: every online player (plus offline players with access); click to grant or revoke access.
   - Toggles: **Fall loop** (fall out of the bottom, reappear at the top; off by default), **Guests can
-    build** (on), **PvP** (on), **Keep inventory** (off), **Visitor notices** (on: you're told when
+    build** (on), **PvP** (on), **Visitor notices** (on: you're told when
     someone enters or leaves your void).
 - **Void Teleporter.** Channel the item (bow-like animation, swirling void particles) to travel:
   - **Unnamed** → your own void, and back again from inside it (remembers where you came from).
